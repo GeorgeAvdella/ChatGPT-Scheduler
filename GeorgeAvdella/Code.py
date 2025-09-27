@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 import sys, os, html, re, webbrowser
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
@@ -270,32 +270,72 @@ def main():
     runfor = None
     algo = None
     quantum = None
+    saw_end = False
     processes: List[Process] = []
 
     for line in raw_lines:
         if line.startswith("processcount"):
-            processcount = int(line.split()[1])
+            try:
+                processcount = int(line.split()[1])
+            except (IndexError, ValueError):
+                print("Error: Missing parameter processcount")
+                sys.exit(1)
+
         elif line.startswith("runfor"):
-            runfor = int(line.split()[1])
+            try:
+                runfor = int(line.split()[1])
+            except (IndexError, ValueError):
+                print("Error: Missing parameter runfor")
+                sys.exit(1)
+
         elif line.startswith("use"):
-            algo = line.split()[1]
+            try:
+                algo = line.split()[1]
+            except IndexError:
+                print("Error: Missing parameter use")
+                sys.exit(1)
+
         elif line.startswith("quantum"):
-            quantum = int(line.split()[1])
+            try:
+                quantum = int(line.split()[1])
+            except (IndexError, ValueError):
+                print("Error: Missing quantum parameter when use is 'rr'")
+                sys.exit(1)
+
         elif line.startswith("process"):
-            parts = line.split()
-            name = parts[2]; arrival = int(parts[4]); burst = int(parts[6])
+            try:
+                parts = line.split()
+                name = parts[2]
+                arrival = int(parts[4])
+                burst = int(parts[6])
+            except (IndexError, ValueError):
+                print("Error: Malformed process directive. Expected: process name <id> arrival <n> burst <n>")
+                sys.exit(1)
             processes.append(Process(name, arrival, burst))
         elif line == "end":
+            saw_end = True
             break
 
-    if processcount is None or runfor is None or algo is None:
-        print("Error: Missing required parameters")
+# after the loop
+    if not saw_end:
+        print("Error: Missing 'end' directive")
+        sys.exit(1)
+
+    # required params
+    if processcount is None:
+        print("Error: Missing parameter processcount")
+        sys.exit(1)
+    if runfor is None:
+        print("Error: Missing parameter runfor")
+        sys.exit(1)
+    if algo is None:
+        print("Error: Missing parameter use")
         sys.exit(1)
     if algo == "rr" and quantum is None:
         print("Error: Missing quantum parameter when use is 'rr'")
         sys.exit(1)
     if processcount != len(processes):
-        print(f"Error: processcount ({processcount}) does not match actual count ({len(processes)})")
+        print(f"Error: processcount ({processcount}) does not match number of process lines ({len(processes)})")
         sys.exit(1)
 
     timeline: List[str] = []
